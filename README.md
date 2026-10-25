@@ -58,6 +58,6 @@ Eu tentei primeiramente usar o Firefox, mas tive problemas de compatibilidade em
 
 ## Rode num notebook
 
-Veja o notebook [exemplo de uso.ipynb](exemplo de uso.ipynb) para mais detalhes.
-Os pré-requisitos são os mesmo citados acima. Muitas das operações que escrevi no
+Veja o notebook [exemplo de uso.ipynb](exemplo%20de%20uso.ipynb) para mais detalhes.
+Os pré-requisitos são os mesmos citados acima. Muitas das operações que escrevi no
 notebook já estão incluidas nas operações que o programa principal faz, nas funções `contabilidade_total()` e `sumario()`.
