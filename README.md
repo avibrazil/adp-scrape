@@ -29,6 +29,9 @@ options:
 
 Todos esses parâmetros podem também ser passados no arquivo `.env`. Veja exemplo em [.env.example](.env.example).
 
+Eu uso este programa todo mês para pegar meus olerites, acompanhar minha renda e integrar os dados extraídos no
+meu [Investorzilla](https://github.com/avibrazil/investorzilla).
+
 ## O que ele exporta
 
 Este programa cria os seguintes arquivos:
