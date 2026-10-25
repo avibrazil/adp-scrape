@@ -37,6 +37,10 @@ Este programa cria os seguintes arquivos:
 - Arquivos PDF, um para cada demonstrativo encontrado (mensal, adiantamento, 13o.)
 - Arquivo Pickle com todos os dados originais extraídos e algumas sumarizações
 
+Os dados na planilha Excel foram tratados e sumarizados (em algumas abas) de modo que
+sirvam para dar uma melhor noção de renda mensal integral, inlcuindo benefícios
+tangíveis e não-tangíveis, como vale, carro, previdência privada etc.
+
 ## Rode via container
 
 Incluí um `Containerfile` que prepara uma instalação bem integrada.
