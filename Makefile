@@ -1,5 +1,5 @@
 .PHONY: clean
 
 clean:
-	rm -rf *.pdf *.pkl .ipynb_checkpoints __pycache__
+	rm -rf *.pdf *.pkl *xlsx .ipynb_checkpoints __pycache__
 

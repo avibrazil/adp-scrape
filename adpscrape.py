@@ -3,6 +3,7 @@
 import datetime
 import time
 import os
+import atexit
 import io
 import types
 import argparse
@@ -10,6 +11,7 @@ import pathlib
 import base64
 import pickle
 import urllib
+import yaml
 import dotenv
 import bs4
 import pandas
@@ -27,9 +29,12 @@ import selenium.webdriver.support.ui
 
 
 debug = False
+driver = None
 
 
 def get_browser_firefox():
+    global driver
+
     # Firefox apresentou problemas no login e não tem certas funções que usamos
     # para extrair PDF e HTTP com referer. Não use Firefox para esta aplicação.
     options = selenium.webdriver.firefox.options.Options()
@@ -49,6 +54,8 @@ def get_browser_firefox():
 
 
 def get_browser_chrome(headless=False):
+    global driver
+
     # --- Configure Chromium ---
     service = selenium.webdriver.chrome.service.Service("/usr/bin/chromedriver")
 
@@ -106,10 +113,9 @@ def adp_login(driver,usuario,senha):
         )
     )
 
-    for c in senha:
-        password.send_keys(c)
+    password.send_keys(senha)
 
-    time.sleep(3)
+    # time.sleep(3)
 
     password.send_keys(selenium.webdriver.common.keys.Keys.ENTER)
 
@@ -456,6 +462,10 @@ def contabil(demonstrativos):
 
 
 def contabilidade_total(demonstrativos):
+    """
+    Concatena todas as tabelas contábeis geradas, demonstrativo por
+    demonstrativo, por contabil()
+    """
     # Tabela cotábil completa
     return (
         pandas.concat(
@@ -474,6 +484,143 @@ def contabilidade_total(demonstrativos):
 
 
 
+def sumario(contabilidade,mensal=True,format=True):
+    categorias = types.SimpleNamespace(
+        yaml.safe_load("""
+            # Valores que me descontam para benefícios
+            Co-participações:
+                - 3179 VA - DESCONTO
+                - 3781 Bradesco - Desconto Dependente
+                - 3783 Bradesco - COPARTICIPAÇÃO TITULAR
+                - 3784 BRADESCO - COPARTICIPAÇÃO DEPENDENT
+                - 5321 Seguro de Vida Desc.Autorizado
+
+
+
+            # Descontos do governo
+            Impostos:
+                - 5560 INSS
+                - 9960 INSS 13Salário
+                - 5500 IR Retido
+
+
+
+            # Horas extras
+            Horas extras:
+                - 1606 Horas Extras 70%
+                - 3257 Banco de Horas 70%
+                - 1804 Adicional Noturno 40 %
+
+
+
+            # Valores que são descontados do líquido mensal, mas que eu recebo de outros jeitos
+            Desvios:
+                - 5590 Prev. Privada Básica
+
+
+
+            # Benefícios que recebo de outras formas, tangíveis e intangíveis
+            Benefícios:
+                - 3179a Vale                   # valor fabricado a partir de '3179 VA - DESCONTO'
+                - 3913a Contrib.Patrocinadora  # valor fabricado a partir de '3913 Contrib.Patrocinadora'
+                - 1330a FGTS                   # valor fabricado a partir de '1330 FGTS RecMes - Remun' e '1331 FGTS RecMes - 13Sal'
+                - 999 Carro
+                - 888 Plano de saúde
+        """
+        )
+    )
+
+    # Fabrica algumas contas e valores que são úteis para nossas contabilidades
+    beneficios = pandas.concat(
+        [
+            # fabrica valores para '3179a Vale' a partir
+            # de '3179 VA - DESCONTO'
+            (
+                contabilidade
+                .query("conta=='3179 VA - DESCONTO'")
+                .assign(
+                    conta='3179a Vale',
+                    valor=lambda table: table.valor * -10,
+                )
+            ),
+
+            # fabrica valores para '3913a Contrib.Patrocinadora' a
+            # partir de '3913 Contrib.Patrocinadora'
+            (
+                contabilidade
+                .query("conta=='3913 Contrib.Patrocinadora'")
+                .assign(
+                    demonstrativo=lambda table: table.demonstrativo.str.replace(' (outros)', ''),
+                    conta='3913a Contrib.Patrocinadora',
+                    valor=lambda table: table.valor * -1,
+                )
+            ),
+
+            # fabrica valores para '1330a FGTS' a partir de
+            # '1330 FGTS RecMes - Remun' e '1331 FGTS RecMes - 13Sal'
+            (
+                contabilidade
+                .query("conta.isin(['1330 FGTS RecMes - Remun','1331 FGTS RecMes - 13Sal'])")
+                .assign(
+                    demonstrativo=lambda table: table.demonstrativo.str.replace(' (outros)', ''),
+                    conta='1330a FGTS',
+                    valor=lambda table: table.valor * -1,
+                )
+            )
+        ]
+    )
+
+    return (
+        pandas.concat([contabilidade,beneficios])
+        .query("~demonstrativo.str.contains('(outros)')")
+        .assign(
+            # Assinala categorias para cada conta
+            contacat=lambda table: (
+                table.conta.map(
+                    {
+                        value: category
+                        for category, values in vars(categorias).items()
+                        for value in values
+                    }
+                )
+                .fillna('Bruto')
+                .astype('category')
+            )
+        )
+        .groupby(by=['pagamento','demonstrativo','contacat'])
+        .agg(
+            valor=('valor',sum)
+        )
+
+        # Transpose values from long to wide
+        .unstack('contacat')
+        .fillna(0)
+
+        # Remove level of columns
+        .pipe(lambda table: table.set_axis(table.columns.droplevel(0), axis=1))
+
+        # Now compute useful user values
+        .assign(
+            **{
+                'Depósito':    lambda table: table['Bruto'] + table['Horas extras'] + table['Desvios'] + table['Co-participações'] + table['Impostos'],
+                'Bruto Total': lambda table: table['Bruto'] + table['Horas extras'] + (-table['Desvios']) + table['Benefícios']
+            }
+        )
+
+        # Índice mais inteligente
+        .pipe(lambda table: table.set_axis(pandas.DatetimeIndex(table.index.droplevel(1))))
+
+        # Visão totalizada por mês
+        .pipe(lambda table: table.resample('ME').sum() if mensal else table)
+
+        # Colunas que interessam e na ordem certa
+        ["Bruto Total,Bruto,Horas extras,Desvios,Co-participações,Impostos,Depósito".split(',')]
+
+        .pipe(lambda table: table.style.format('R$ {:,.2f}') if format else table)
+    )
+
+
+
 def save_pickle(demonstrativos, folder=pathlib.Path()):
     with (folder / 'demonstrativos.pkl').open('wb') as f:
         pickle.dump(demonstrativos, f)
@@ -484,6 +631,20 @@ def save_pdf(demonstrativos, folder=pathlib.Path()):
     for d in demonstrativos:
         with (folder / f"{d.pagamento:%Y.%m.%d} {d.tipo}.pdf").open('wb') as f:
             f.write(d.pdf)
+
+
+
+def save_xls(demonstrativos, folder=pathlib.Path()):
+    contabilidade = contabilidade_total(demonstrativos)
+
+    sumario_parcial = sumario(contabilidade,mensal=False,format=True)
+
+    sumario_mensal = sumario(contabilidade,mensal=True,format=True)
+
+    with pandas.ExcelWriter(folder / "sumário.xlsx") as writer:
+        contabilidade.to_excel(writer, sheet_name="Contabilidade detalhada")
+        sumario_parcial.to_excel(writer, sheet_name="Sumário por demonstrativo")
+        sumario_mensal.to_excel(writer, sheet_name="Sumário mensal")
 
 
 
@@ -526,6 +687,12 @@ def cli_args():
         help="Salva arquivo Pickle com tudo o que foi extraido e dados processados (default: $PICKLE ou salva sim)",
     )
     parser.add_argument(
+        "--excel",
+        action=argparse.BooleanOptionalAction,
+        default=os.getenv("EXCEL", "true").lower() in true_set,
+        help="Salva planilha Excel com diversas visões (default: $EXCEL ou salva sim)",
+    )
+    parser.add_argument(
         "--output",
         type=pathlib.Path,
         default=os.getenv("OUTPUT", "./"),
@@ -553,14 +720,22 @@ def cli_args():
 
 
 
+def kill_browser():
+    global driver
+    driver.quit()
+
+
+
 def main():
     global debug
 
     dotenv.load_dotenv()
 
     args=cli_args()
-
     debug=args.debug
+
+    # Garante morte do browser mesmo em situação de excessão
+    atexit.register(kill_browser)
 
     driver=get_browser_chrome(args.headless)
     adp_login(driver,usuario=args.adp_user,senha=args.adp_password)
@@ -575,6 +750,9 @@ def main():
 
     if args.pdf:
         save_pdf(demonstrativos, folder=args.output)
+
+    if args.excel:
+        save_xls(demonstrativos, folder=args.output)
 
     return demonstrativos
 

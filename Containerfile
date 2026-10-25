@@ -19,6 +19,7 @@ RUN    dnf -y --setopt=tsflags=nodocs --setopt=install_weak_deps=False upgrade \
             python3-pandas \
             python3-beautifulsoup4 \
             python3-selenium \
+            python3-openpyxl \
             python3-dotenv \
             python3-dotenv+cli
     && dnf clean all \
