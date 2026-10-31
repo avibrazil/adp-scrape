@@ -62,12 +62,15 @@ def get_browser_chrome(headless=False):
     options = selenium.webdriver.chrome.options.Options()
     options.binary_location = "/usr/bin/chromium-browser"
 
-    if headless:
-        options.add_argument("--headless=new")
-        options.add_argument("--window-size=1920,1080")
-
     # options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    # options.add_argument("--start-fullscreen")
+    options.add_argument("--window-size=1280,720")
+
+
+    if headless:
+        options.add_argument("--headless=new")
+        options.add_argument("--window-size=1280,720")
 
     # --- Selenium Manager auto-downloads driver ---
     driver = selenium.webdriver.Chrome(options=options, service=service)
@@ -88,6 +91,7 @@ def adp_login(driver,usuario,senha):
     # Se os botões e campos desejados não aparecerem nesse período de tempo,
     # os métodos find_element() a seguir vão falhar e gerar uma excessão.
     driver.implicitly_wait(10)
+    # time.sleep(10)
 
     # Preenche os campos de usuáro e senha para se logar
     username = (
@@ -96,9 +100,20 @@ def adp_login(driver,usuario,senha):
             selenium.webdriver.common.by.By.CSS_SELECTOR,
             "#login-form_username"
         )
+        # .shadow_root
+        # .find_element(
+        #     selenium.webdriver.common.by.By.CSS_SELECTOR,
+        #     "input"
+        # )
     )
+
+    # username.click()
+    # for c in usuario:
+    #     username.send_keys(c)
     username.send_keys(usuario)
     username.send_keys(selenium.webdriver.common.keys.Keys.ENTER)
+
+    # time.sleep(500)
 
     driver.implicitly_wait(3)
 
@@ -463,8 +478,8 @@ def contabil(demonstrativos):
 
 def contabilidade_total(demonstrativos):
     """
-    Concatena todas as tabelas contábeis geradas, demonstrativo por
-    demonstrativo, por contabil()
+    Concatena todas as tabelas contábeis geradas por contabil(), demonstrativo
+    por demonstrativo.
     """
     # Tabela cotábil completa
     return (
@@ -479,12 +494,18 @@ def contabilidade_total(demonstrativos):
         .assign(
             conta=lambda table: table.conta.astype('category'),
             demonstrativo=lambda table: table.demonstrativo.astype('category'),
+            categoria=lambda table: table.categoria.astype('category'),
         )
+        ['pagamento competencia_ini competencia_fim cod demonstrativo categoria conta quantidade valor'.split()]
     )
 
 
 
-def sumario(contabilidade,mensal=True,format=True):
+def enriquecimento(demonstrativos):
+    """
+    Categoriza cada tipo de conta e adiciona contas virtuais, demonstrativo
+    por demonstrativo
+    """
     categorias = types.SimpleNamespace(
         yaml.safe_load("""
             # Valores que me descontam para benefícios
@@ -514,7 +535,7 @@ def sumario(contabilidade,mensal=True,format=True):
 
 
             # Valores que são descontados do líquido mensal, mas que eu recebo de outros jeitos
-            Desvios:
+            Alocações:
                 - 5590 Prev. Privada Básica
 
 
@@ -530,70 +551,108 @@ def sumario(contabilidade,mensal=True,format=True):
         )
     )
 
-    # Fabrica algumas contas e valores que são úteis para nossas contabilidades
-    beneficios = pandas.concat(
-        [
-            # fabrica valores para '3179a Vale' a partir
-            # de '3179 VA - DESCONTO'
-            (
-                contabilidade
-                .query("conta=='3179 VA - DESCONTO'")
-                .assign(
-                    conta='3179a Vale',
-                    valor=lambda table: table.valor * -10,
-                )
-            ),
+    for d in demonstrativos:
+        if hasattr(d,'contabil'):
+            # Fabrica algumas contas e valores que são úteis para nossas contabilidades
+            beneficios = [
+                    # fabrica valores para '3179a Vale' a partir
+                    # de '3179 VA - DESCONTO'
+                    (
+                        d.contabil
+                        .query("conta=='3179 VA - DESCONTO'")
+                        .assign(
+                            conta='3179a Vale',
+                            valor=lambda table: table.valor * -10,
+                        )
+                    ),
 
-            # fabrica valores para '3913a Contrib.Patrocinadora' a
-            # partir de '3913 Contrib.Patrocinadora'
-            (
-                contabilidade
-                .query("conta=='3913 Contrib.Patrocinadora'")
-                .assign(
-                    demonstrativo=lambda table: table.demonstrativo.str.replace(' (outros)', ''),
-                    conta='3913a Contrib.Patrocinadora',
-                    valor=lambda table: table.valor * -1,
-                )
-            ),
+                    # fabrica valores para '3913a Contrib.Patrocinadora' a
+                    # partir de '3913 Contrib.Patrocinadora'
+                    (
+                        d.contabil
+                        .query("conta=='3913 Contrib.Patrocinadora'")
+                        .assign(
+                            demonstrativo=lambda table: table.demonstrativo.str.replace(' (outros)', ''),
+                            conta='3913a Contrib.Patrocinadora',
+                            valor=lambda table: table.valor * -1,
+                        )
+                    ),
 
-            # fabrica valores para '1330a FGTS' a partir de
-            # '1330 FGTS RecMes - Remun' e '1331 FGTS RecMes - 13Sal'
-            (
-                contabilidade
-                .query("conta.isin(['1330 FGTS RecMes - Remun','1331 FGTS RecMes - 13Sal'])")
+                    # fabrica valores para '1330a FGTS' a partir de
+                    # '1330 FGTS RecMes - Remun' e '1331 FGTS RecMes - 13Sal'
+                    (
+                        d.contabil
+                        .query("conta.isin(['1330 FGTS RecMes - Remun','1331 FGTS RecMes - 13Sal'])")
+                        .assign(
+                            demonstrativo=lambda table: table.demonstrativo.str.replace(' (outros)', ''),
+                            conta='1330a FGTS',
+                            valor=lambda table: table.valor * -1,
+                        )
+                    )
+                ]
+
+            beneficios = [beneficio for beneficio in beneficios if len(beneficio)>0]
+
+            d.contabil = (
+                # Adiciona os benefícios fabricados com o demonstrativo original
+                pandas.concat([d.contabil] + beneficios)
+
+                # Assinala categorias para cada conta
                 .assign(
-                    demonstrativo=lambda table: table.demonstrativo.str.replace(' (outros)', ''),
-                    conta='1330a FGTS',
-                    valor=lambda table: table.valor * -1,
+                    categoria = lambda table: (
+                        table.conta
+                        .map(
+                            {
+                                value: category
+                                for category, values in vars(categorias).items()
+                                for value in values
+                            }
+                        )
+                    )
+                )
+
+                # Assinala categoria 'Bruto' só nos demonstrativos que não "(outros)"
+                .assign(
+                    categoria = lambda table: (
+                        table
+                        .apply(
+                            axis=1,
+                            func=lambda row:
+                                'Bruto' if (
+                                    pandas.isna(row.categoria) and
+                                    '(outros)' not in row.demonstrativo
+                                ) else row.categoria
+                        )
+                    )
+                    .astype('category')
                 )
             )
-        ]
-    )
 
+    return demonstrativos
+
+
+
+def sumario(contabilidade,mensal=True,format=True):
+    """
+    Faz sumarizações por demonstrativo (mensal=False) ou por mês (mensal=True).
+    Se format=True, returna um DataFrame formatado.
+    """
     return (
-        pandas.concat([contabilidade,beneficios])
-        .query("~demonstrativo.str.contains('(outros)')")
-        .assign(
-            # Assinala categorias para cada conta
-            contacat=lambda table: (
-                table.conta.map(
-                    {
-                        value: category
-                        for category, values in vars(categorias).items()
-                        for value in values
-                    }
-                )
-                .fillna('Bruto')
-                .astype('category')
-            )
-        )
-        .groupby(by=['pagamento','demonstrativo','contacat'])
+        contabilidade
+        .query("~demonstrativo.str.contains(r'\\(outros\\)')")
+        .groupby(by=['pagamento','demonstrativo','categoria'], observed=False)
         .agg(
-            valor=('valor',sum)
+            valor=('valor','sum')
         )
 
-        # Transpose values from long to wide
-        .unstack('contacat')
+        # Transpose sub-index categoria em colunas
+        .unstack('categoria')
+
+        # Remove linhas inteiramente vazias
+        .replace(0, pandas.NA)
+        .dropna(how='all')
+
+        # Sem valor vira zero
         .fillna(0)
 
         # Remove level of columns
@@ -602,19 +661,20 @@ def sumario(contabilidade,mensal=True,format=True):
         # Now compute useful user values
         .assign(
             **{
-                'Depósito':    lambda table: table['Bruto'] + table['Horas extras'] + table['Desvios'] + table['Co-participações'] + table['Impostos'],
-                'Bruto Total': lambda table: table['Bruto'] + table['Horas extras'] + (-table['Desvios']) + table['Benefícios']
+                'Depósito Bancário':    lambda table: table['Bruto'] + table['Horas extras'] + table['Alocações'] + table['Co-participações'] + table['Impostos'],
+                'Bruto Total': lambda table: table['Bruto'] + table['Horas extras'] + (-table['Alocações']) + table['Benefícios'],
+                'Ganho Real':  lambda table: table['Bruto Total'] + table['Co-participações'] + table['Impostos'],
             }
         )
 
         # Índice mais inteligente
         .pipe(lambda table: table.set_axis(pandas.DatetimeIndex(table.index.droplevel(1))))
 
-        # Visão totalizada por mês
+        # Visão totalizada por mês caso mensal=True
         .pipe(lambda table: table.resample('ME').sum() if mensal else table)
 
         # Colunas que interessam e na ordem certa
-        ["Bruto Total,Bruto,Horas extras,Desvios,Co-participações,Impostos,Depósito".split(',')]
+        ["Bruto Total,Bruto,Horas extras,Alocações,Co-participações,Impostos,Depósito Bancário,Ganho Real".split(',')]
 
         .pipe(lambda table: table.style.format('R$ {:,.2f}') if format else table)
     )
@@ -642,9 +702,9 @@ def save_xls(demonstrativos, folder=pathlib.Path()):
     sumario_mensal = sumario(contabilidade,mensal=True,format=True)
 
     with pandas.ExcelWriter(folder / "sumário.xlsx") as writer:
-        contabilidade.to_excel(writer, sheet_name="Contabilidade detalhada")
-        sumario_parcial.to_excel(writer, sheet_name="Sumário por demonstrativo")
-        sumario_mensal.to_excel(writer, sheet_name="Sumário mensal")
+        contabilidade.to_excel(sheet_name="Contabilidade detalhada",     freeze_panes=(1,1), excel_writer=writer, index=False)
+        sumario_parcial.to_excel(sheet_name="Sumário por demonstrativo", freeze_panes=(1,1), excel_writer=writer)
+        sumario_mensal.to_excel(sheet_name="Sumário mensal",             freeze_panes=(1,1), excel_writer=writer)
 
 
 
@@ -744,6 +804,8 @@ def main():
     demonstrativos=adp_iterate_demonstrativos(driver,args.start_year)
 
     demonstrativos=contabil(demonstrativos)
+
+    demonstrativos=enriquecimento(demonstrativos)
 
     if args.pickle:
         save_pickle(demonstrativos, folder=args.output)
