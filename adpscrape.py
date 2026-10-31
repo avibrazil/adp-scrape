@@ -56,6 +56,8 @@ def get_browser_firefox():
 def get_browser_chrome(headless=False):
     global driver
 
+    wsize=(1280,720)
+
     # --- Configure Chromium ---
     service = selenium.webdriver.chrome.service.Service("/usr/bin/chromedriver")
 
@@ -65,12 +67,13 @@ def get_browser_chrome(headless=False):
     # options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     # options.add_argument("--start-fullscreen")
-    options.add_argument("--window-size=1280,720")
+    options.add_argument(f"--window-size={wsize[0]},{wsize[1]}")
 
 
     if headless:
         options.add_argument("--headless=new")
-        options.add_argument("--window-size=1280,720")
+        options.add_argument(f"--window-size={wsize[0]},{wsize[1]}")
+        options.add_argument(f"--screen-info={{0,0 {wsize[0]}x{wsize[1]}}}")
 
     # --- Selenium Manager auto-downloads driver ---
     driver = selenium.webdriver.Chrome(options=options, service=service)
@@ -491,11 +494,23 @@ def contabilidade_total(demonstrativos):
             ]
         )
         .reset_index(drop=True)
-        .assign(
-            conta=lambda table: table.conta.astype('category'),
-            demonstrativo=lambda table: table.demonstrativo.astype('category'),
-            categoria=lambda table: table.categoria.astype('category'),
+
+        .astype(
+            {
+                col: 'category'
+                for col in "conta demonstrativo categoria".split()
+            }
         )
+        # .assign(
+        #     conta          = lambda table:         table.conta.astype('category'),
+        #     demonstrativo  = lambda table: table.demonstrativo.astype('category'),
+        #     categoria      = lambda table:     table.categoria.astype('category'),
+        # )
+
+        # Ordena cronologicamente > demonstrativo > conta
+        .sort_values('pagamento demonstrativo categoria'.split())
+        .reset_index(drop=True)
+
         ['pagamento competencia_ini competencia_fim cod demonstrativo categoria conta quantidade valor'.split()]
     )
 
@@ -674,7 +689,7 @@ def sumario(contabilidade,mensal=True,format=True):
         .pipe(lambda table: table.resample('ME').sum() if mensal else table)
 
         # Colunas que interessam e na ordem certa
-        ["Bruto Total,Bruto,Horas extras,Alocações,Co-participações,Impostos,Depósito Bancário,Ganho Real".split(',')]
+        ["Bruto Total,Bruto,Horas extras,Benefícios,Alocações,Co-participações,Impostos,Depósito Bancário,Ganho Real".split(',')]
 
         .pipe(lambda table: table.style.format('R$ {:,.2f}') if format else table)
     )
