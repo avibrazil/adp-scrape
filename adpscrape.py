@@ -11,6 +11,8 @@ import pathlib
 import base64
 import pickle
 import urllib
+import logging
+
 import yaml
 import dotenv
 import bs4
@@ -481,8 +483,8 @@ def contabil(demonstrativos):
 
 def contabilidade_total(demonstrativos):
     """
-    Concatena todas as tabelas contábeis geradas por contabil(), demonstrativo
-    por demonstrativo.
+    Concatena todas as tabelas contábeis geradas por enriquecimento(contabil()),
+    demonstrativo por demonstrativo.
     """
     # Tabela cotábil completa
     return (
@@ -501,11 +503,6 @@ def contabilidade_total(demonstrativos):
                 for col in "conta demonstrativo categoria".split()
             }
         )
-        # .assign(
-        #     conta          = lambda table:         table.conta.astype('category'),
-        #     demonstrativo  = lambda table: table.demonstrativo.astype('category'),
-        #     categoria      = lambda table:     table.categoria.astype('category'),
-        # )
 
         # Ordena cronologicamente > demonstrativo > conta
         .sort_values('pagamento demonstrativo categoria'.split())
@@ -519,7 +516,7 @@ def contabilidade_total(demonstrativos):
 def enriquecimento(demonstrativos):
     """
     Categoriza cada tipo de conta e adiciona contas virtuais, demonstrativo
-    por demonstrativo
+    por demonstrativo. Vou mostrar um warning para contas que não consegui categorizar.
     """
     categorias = types.SimpleNamespace(
         yaml.safe_load("""
@@ -562,9 +559,23 @@ def enriquecimento(demonstrativos):
                 - 1330a FGTS                   # valor fabricado a partir de '1330 FGTS RecMes - Remun' e '1331 FGTS RecMes - 13Sal'
                 - 999 Carro
                 - 888 Plano de saúde
+
+
+
+            # Outros valores
+            Bruto:
+                - 0010 Salário Base
+                - 0502 DSR (H.E./Adic.Not.)
+                - 0512 13º Salário - 2ª Parcela
+                - 1611 Horas Extras 110%
+                - 2820 Adiant Quinzenal
+                - 2821 Adiant Quinzenal
+                - 3259 AJUDA DE CUSTO HOME OFFICE
         """
         )
     )
+
+    sem_categoria = None
 
     for d in demonstrativos:
         if hasattr(d,'contabil'):
@@ -627,21 +638,47 @@ def enriquecimento(demonstrativos):
                 )
 
                 # Assinala categoria 'Bruto' só nos demonstrativos que não "(outros)"
-                .assign(
-                    categoria = lambda table: (
-                        table
-                        .apply(
-                            axis=1,
-                            func=lambda row:
-                                'Bruto' if (
-                                    pandas.isna(row.categoria) and
-                                    '(outros)' not in row.demonstrativo
-                                ) else row.categoria
-                        )
-                    )
-                    .astype('category')
-                )
+                # .assign(
+                #     categoria = lambda table: (
+                #         table
+                #         .apply(
+                #             axis=1,
+                #             func=lambda row:
+                #                 'Bruto' if (
+                #                     pandas.isna(row.categoria) and
+                #                     '(outros)' not in row.demonstrativo
+                #                 ) else row.categoria
+                #         )
+                #     )
+                #     .astype('category')
+                # )
             )
+
+            resto = (
+                d.contabil
+                .query("categoria.isna()")
+                ["demonstrativo conta".split()]
+            )
+
+            sem_categoria = (
+                resto
+                if sem_categoria is None
+                else pandas.concat([sem_categoria, resto])
+            )
+
+    if sem_categoria is not None and len(sem_categoria)>0:
+        sem_categoria = (
+            sem_categoria
+            .drop_duplicates()
+            .sort_values(['demonstrativo','conta'])
+            .reset_index(drop=True)
+        )
+
+        logging.warning(
+            "%d contas sem categoria:\n%s",
+            len(sem_categoria),
+            sem_categoria.to_markdown()
+        )
 
     return demonstrativos
 
