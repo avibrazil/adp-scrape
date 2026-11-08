@@ -689,6 +689,22 @@ def sumario(contabilidade,mensal=True,format=True):
     Faz sumarizações por demonstrativo (mensal=False) ou por mês (mensal=True).
     Se format=True, returna um DataFrame formatado.
     """
+
+    colunas = yaml.safe_load(
+        """
+            - Demonstrativo
+            - Bruto Total
+            - Bruto
+            - Horas extras
+            - Benefícios
+            - Alocações
+            - Co-participações
+            - Impostos
+            - Depósito Bancário
+            - Ganho Real
+        """
+    )
+
     return (
         contabilidade
         .query("~demonstrativo.str.contains(r'\\(outros\\)')")
@@ -704,31 +720,48 @@ def sumario(contabilidade,mensal=True,format=True):
         .replace(0, pandas.NA)
         .dropna(how='all')
 
-        # Sem valor vira zero
-        .fillna(0)
-
         # Remove level of columns
         .pipe(lambda table: table.set_axis(table.columns.droplevel(0), axis=1))
+
+        # Sem valor vira zero
+        .fillna(0)
 
         # Now compute useful user values
         .assign(
             **{
                 'Depósito Bancário':    lambda table: table['Bruto'] + table['Horas extras'] + table['Alocações'] + table['Co-participações'] + table['Impostos'],
-                'Bruto Total': lambda table: table['Bruto'] + table['Horas extras'] + (-table['Alocações']) + table['Benefícios'],
-                'Ganho Real':  lambda table: table['Bruto Total'] + table['Co-participações'] + table['Impostos'],
+                'Bruto Total':          lambda table: table['Bruto'] + table['Horas extras'] + (-table['Alocações']) + table['Benefícios'],
+                'Ganho Real':           lambda table: table['Bruto Total'] + table['Co-participações'] + table['Impostos'],
             }
         )
 
         # Índice mais inteligente
-        .pipe(lambda table: table.set_axis(pandas.DatetimeIndex(table.index.droplevel(1))))
+        ## Tira nome do demonstrativo do índice, para que possamos agrupar por mês
+        .pipe(lambda table: table.reset_index(level=1, names=['pagamento','Demonstrativo']))
+        ## Converte a data solta do índice em DatetimeIndex, para que possamos agrupar por mês
+        .pipe(lambda table: table.set_axis(pandas.DatetimeIndex(table.index)))
 
-        # Visão totalizada por mês caso mensal=True
-        .pipe(lambda table: table.resample('ME').sum() if mensal else table)
+        # Visão totalizada. Caso mensal=True, une todos os demonstrativos
+        # daquele mês
+        .pipe(
+            lambda table: (
+                table[colunas[1:]].resample('ME').sum()
+                if mensal
+                else table[colunas]
+            )
+        )
 
-        # Colunas que interessam e na ordem certa
-        ["Bruto Total,Bruto,Horas extras,Benefícios,Alocações,Co-participações,Impostos,Depósito Bancário,Ganho Real".split(',')]
-
-        .pipe(lambda table: table.style.format('R$ {:,.2f}') if format else table)
+        .pipe(
+            lambda table: (
+                (
+                    table.style.format('R$ {:,.2f}')
+                    if mensal
+                    else table.style.format('R$ {:,.2f}', subset=colunas[1:])
+                )
+                if format
+                else table
+            )
+        )
     )
 
 
@@ -754,9 +787,9 @@ def save_xls(demonstrativos, folder=pathlib.Path()):
     sumario_mensal = sumario(contabilidade,mensal=True,format=True)
 
     with pandas.ExcelWriter(folder / "sumário.xlsx") as writer:
-        contabilidade.to_excel(sheet_name="Contabilidade detalhada",     freeze_panes=(1,1), excel_writer=writer, index=False)
-        sumario_parcial.to_excel(sheet_name="Sumário por demonstrativo", freeze_panes=(1,1), excel_writer=writer)
-        sumario_mensal.to_excel(sheet_name="Sumário mensal",             freeze_panes=(1,1), excel_writer=writer)
+        contabilidade.to_excel(  sheet_name="Contabilidade detalhada",     freeze_panes=(1,1), excel_writer=writer, index=False)
+        sumario_parcial.to_excel(sheet_name="Sumário por demonstrativo",   freeze_panes=(1,1), excel_writer=writer)
+        sumario_mensal.to_excel( sheet_name="Sumário mensal",              freeze_panes=(1,1), excel_writer=writer)
 
 
 
