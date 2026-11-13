@@ -69,16 +69,11 @@ Aba **Contabilidade detalhada** é basicamente a junção de todos os olerites e
 | 2025-12-18  | 2025-12-01        | 2025-12-31        |  1502 | DÉCIMO TERCEIRO (outros) |                  | 1301 Base FGTS RecMes - 13Sal            |              |  -13485.8   |
 | 2025-12-18  | 2025-12-01        | 2025-12-31        |  1502 | DÉCIMO TERCEIRO (outros) |                  | 1331 FGTS RecMes - 13Sal                 |              |   -1078.82  |
 | 2025-12-18  | 2025-12-01        | 2025-12-31        |  1502 | DÉCIMO TERCEIRO (outros) |                  | 8100 Inss Empregador                     |        20    |   -2697.14  |
-| 2025-12-18  | 2025-12-01        | 2025-12-31        |  1502 | DÉCIMO TERCEIRO (outros) |                  | 8101 RAT                                 |              |    -134.844 |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Alocações        | 5590 Prev. Privada Básica                |              |   -7597.83  |
-| 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Benefícios       | 3179a Vale                               |              |    4759.96  |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Benefícios       | 3913a Contrib.Patrocinadora              |              |   15195.7   |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Benefícios       | 1330a FGTS                               |              |    9062.36  |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Bruto            | 0010 Salário Base                        |       140    |  113280     |
-| 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Bruto            | 3259 AJUDA DE CUSTO HOME OFFICE          |              |    3776.93  |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Bruto            | 2821 Adiant Quinzenal                    |              |  -45312.1   |
-| 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Co-participações | 3179 VA - DESCONTO                       |              |    -475.996 |
-| 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Co-participações | 5321 Seguro de Vida Desc.Autorizado      |              |    -334.426 |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Impostos         | 5500 IR Retido                           |              |  -21156     |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL                   | Impostos         | 5560 INSS                                |              |   -6154.45  |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL (outros)        |                  | 5501 Base IR                             |              |  -98301.8   |
@@ -91,17 +86,12 @@ Aba **Contabilidade detalhada** é basicamente a junção de todos os olerites e
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL (outros)        |                  | 3913 Contrib.Patrocinadora               |              |  -15195.7   |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL (outros)        |                  | 8010 Salário Contribuição INSS Empregado |              | -113280     |
 | 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL (outros)        |                  | 8100 Inss Empregador                     |        20    |  -22656.1   |
-| 2025-12-29  | 2025-12-01        | 2025-12-31        |  1494 | MENSAL (outros)        |                  | 8101 RAT                                 |              |   -1132.82  |
 | 2026-01-14  | 2026-01-01        | 2026-01-31        |  1505 | ADIANTAMENTO QUINZENAL | Bruto            | 2820 Adiant Quinzenal                    |              |   64731.6   |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Alocações        | 5590 Prev. Privada Básica                |              |   -7597.83  |
-| 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Benefícios       | 3179a Vale                               |              |    6654.89  |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Benefícios       | 3913a Contrib.Patrocinadora              |              |    7597.83  |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Benefícios       | 1330a FGTS                               |              |   12946.3   |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Bruto            | 0010 Salário Base                        |       200    |  161829     |
-| 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Bruto            | 3259 AJUDA DE CUSTO HOME OFFICE          |              |     776.081 |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Bruto            | 2821 Adiant Quinzenal                    |              |  -64731.6   |
-| 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Co-participações | 3179 VA - DESCONTO                       |              |    -665.489 |
-| 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Co-participações | 5321 Seguro de Vida Desc.Autorizado      |              |    -334.426 |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Impostos         | 5500 IR Retido                           |              |  -34442     |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL                 | Impostos         | 5560 INSS                                |              |   -6390.18  |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL (outros)        |                  | 5501 Base IR                             |              | -146615     |
@@ -114,7 +104,6 @@ Aba **Contabilidade detalhada** é basicamente a junção de todos os olerites e
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL (outros)        |                  | 3913 Contrib.Patrocinadora               |              |   -7597.83  |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL (outros)        |                  | 8010 Salário Contribuição INSS Empregado |              | -161829     |
 | 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL (outros)        |                  | 8100 Inss Empregador                     |        20    |  -32365.8   |
-| 2026-01-29  | 2026-01-01        | 2026-01-31        |  1501 | MENSAL (outros)        |                  | 8101 RAT                                 |              |   -1618.26  |
 
 
 Aba **Sumário por demonstrativo** tem valores sumarizados por categorias e por demonstrativo encontrado
